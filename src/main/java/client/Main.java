@@ -1,5 +1,6 @@
 package client;
 
+import javafx.util.Pair;
 import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -34,19 +35,49 @@ public class Main {
         robot.setAutoWaitForIdle(true);
     }
 
+    public void exportAndHandle(EmilAccountData allDatas, String appConfDir, String prefix){
+        for(Pair<String, Pair<List<EmilData>, List<ExcelData>>> datasTmp : Arrays.asList(allDatas.xDatas, allDatas.datas)) {
+            String subDomain = datasTmp.getKey();
+            List<String> trackNumbers = new ArrayList<>();
+            for (EmilData ed : datasTmp.getValue().getKey()) {
+                trackNumbers.add(ed.trackNum);
+            }
+            TrackNumberPage numberPage = new TrackNumberPage(trackNumbers);
+
+            final String domain = Constants.getAccount(subDomain);
+            JOptionPane.showMessageDialog(null, "Switch to " + domain +
+                    "-Account, please");
+            Constants.halt(domain);
+
+            sentTab();
+            int fileNameSuffix = Constants.PREFIX_IDX;
+            while (numberPage.hasElement()) {
+                final String trackNums = numberPage.getElement();
+                final String exportSendDatafileName = Utils.getExportDataFileName(appConfDir + Constants.q9Raw,
+                        prefix + domain, fileNameSuffix);
+                queryAndExport(trackNums, exportSendDatafileName);
+                fileNameSuffix++;
+            }
+
+            List<ExcelData> excelData = SettleFactory.getSettle(subDomain, propertiesReader)
+                    .parseFile(appConfDir + Constants.q9Raw, prefix + domain, fileNameSuffix);
+            datasTmp.getValue().getValue().addAll(excelData);
+        }
+    }
+
     public static void main(String... args) {
         long currTime = System.currentTimeMillis();
         final String appConfDir = Constants.appDir;
         final List<String> dirs = new ArrayList<>();
-        dirs.add(appConfDir + Constants.mainRaw);
-        dirs.add(appConfDir + Constants.subRaw);
+        dirs.add(appConfDir + Constants.q9Raw);
+        dirs.add(appConfDir + Constants.emilRaw);
         dirs.add(appConfDir + Constants.LOG);
 
         for (String dir : dirs) {
             try {
                 FileUtils.deleteDirectory(new File(dir));
             } catch (IOException e) {
-                e.printStackTrace();
+                logger.error(e.getMessage());
             }
         }
 
@@ -64,86 +95,58 @@ public class Main {
 
         Constants.halt(appConfDir, "");
 
-        Map<String, CsvHandler> handlers = new HashMap<>();
-        for(String subDomain : Arrays.asList(Constants.subRaw, Constants.mainRaw)) {
-            CsvHandler sub = new CsvHandler();
-            sub.parseFile(Constants.appDir, subDomain);
-            handlers.put(subDomain, sub);
+        try {
+            FileUtils.deleteDirectory(new File(appConfDir + Constants.q9Raw));
+        } catch (IOException e) {
+            logger.error(e.getMessage());
         }
-        List<EmilData> datas = EmilCsvHandler.parseFile(Constants.appDir, "emil_rawData");
-        List<String> notMatchTrackNums = new ArrayList<>();
-        for(EmilData d : datas){
-            boolean isFound = false;
-            for(Map.Entry<String, CsvHandler> entry : handlers.entrySet()){
-                isFound = Constants.matchTrackNum(d.trackNum, entry.getValue().getTrackNumbers());
-                if(isFound){
-                    break;
-                }
-            }
+        Utils.createDir(appConfDir + Constants.q9Raw);
 
-            if(!isFound){
-                notMatchTrackNums.add(d.trackNum);
-            }
-        }
-
-        if (!notMatchTrackNums.isEmpty()) {
-            int c = 0;
-            for (String it : notMatchTrackNums){
-                logger.info("Not match " + it);
-                c++;
-                if(c == 10){
-                    break;
-                }
-            }
-            logger.info("Emil data has " + notMatchTrackNums.size() + " item not match Q9");
-            for(Map.Entry<String, CsvHandler> entry : handlers.entrySet()) {
-                logger.info("Original " + entry.getKey() + " cout :" + entry.getValue().getTrackNumSize());
-                entry.getValue().resetPage(notMatchTrackNums);
-                logger.info("New " + entry.getKey() + " cout :" + entry.getValue().getTrackNumSize());
-            }
-        }
-
-        List<ExcelData> excelDatas = new ArrayList<>();
-
-        for(String subDomain : Arrays.asList(Constants.subRaw, Constants.mainRaw)) {
-            final String domain = Constants.getAccount(subDomain);
-            if (!subDomain.equals(Constants.subRaw)){
-                JOptionPane.showMessageDialog(null, "Switch to " + domain + ", please");
-            }
-            Constants.halt(domain);
-
-
-            exportData.sentTab();
-            int fileNameSuffix = Constants.PREFIX_IDX - 1;
-            while (handlers.get(subDomain).hasNext()) {
-                fileNameSuffix++;
-                final String trackNums = handlers.get(subDomain).next();
-                final String exportSendDatafileName = Utils.getExportDataFileName(appConfDir + subDomain,
-                        domain, fileNameSuffix);
-                exportData.queryAndExport(trackNums, exportSendDatafileName);
-            }
-
-            List<ExcelData> excelData = SettleFactory.getSettle(subDomain, exportData.propertiesReader)
-                    .parseFile(appConfDir + Constants.subRaw, appConfDir + Constants.mainRaw,
-                            domain, fileNameSuffix);
-            excelDatas.addAll(excelData);
-        }
+        EmilAccountData allDatas = EmilCsvHandler.parseFile(Constants.appDir, Constants.emilRaw);
+        exportData.exportAndHandle(allDatas, appConfDir, "");
 
         {
             final long spendTime = (System.currentTimeMillis() - currTime) /1000;
             logger.info("Export data spend total time: " + spendTime +" seconds");
         }
 
-        logger.info("Export record size := " + excelDatas.size());
-        logger.info("Emil record size := " + datas.size());
+        List<EmilData> allEmilDatas = new ArrayList<>();
+        List<ExcelData> allExcelDatas = new ArrayList<>();
+        allEmilDatas.addAll(allDatas.datas.getValue().getKey());
+        allEmilDatas.addAll(allDatas.xDatas.getValue().getKey());
+        allExcelDatas.addAll(allDatas.datas.getValue().getValue());
+        allExcelDatas.addAll(allDatas.xDatas.getValue().getValue());
 
-        try{
-            XlsResultWriter.writeTmpFile(appConfDir + "\\tmp.XLS", excelDatas);
-        } catch (Exception e){
-            logger.error(e.getMessage());
+        logger.info("Export record size := " + allExcelDatas.size());
+        logger.info("Emil record size := " + allEmilDatas.size());
+
+        List<EmilData> needFindOnceAgain = new ArrayList<>();
+        for (EmilData d : allEmilDatas) {
+            boolean isNotF = true;
+            for (ExcelData ed : allExcelDatas) {
+                if (d.trackNum.equals(ed.trackNumber)){
+                    isNotF = false;
+                    break;
+                }
+            }
+
+            if(isNotF) {
+                needFindOnceAgain.add(d);
+            }
         }
+
+        EmilAccountData needDoAgain = new EmilAccountData();
+        needDoAgain.datas.getValue().getKey().addAll(needFindOnceAgain);
+        needDoAgain.xDatas.getValue().getKey().addAll(needFindOnceAgain);
+        exportData.exportAndHandle(needDoAgain, appConfDir, "t");
+
+        allEmilDatas.addAll(needDoAgain.datas.getValue().getKey());
+        allEmilDatas.addAll(needDoAgain.xDatas.getValue().getKey());
+        allExcelDatas.addAll(needDoAgain.datas.getValue().getValue());
+        allExcelDatas.addAll(needDoAgain.xDatas.getValue().getValue());
+
         try {
-            XlsResultWriter.writeFile(appConfDir + "\\result.XLS", datas, excelDatas);
+            XlsResultWriter.writeFile(appConfDir + "\\result.XLS", allEmilDatas, allExcelDatas);
         } catch (Exception e){
             logger.error(e.getMessage());
         }

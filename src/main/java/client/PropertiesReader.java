@@ -153,7 +153,7 @@ public class PropertiesReader {
 
     public static void main(String[] args) throws Exception{
         PropertiesReader re = new PropertiesReader(Constants.appDir);
-        System.out.println(re.getIgnoreOne());
+        System.out.println(re.getSendTabPoint());
         System.out.println(re.getDelayForQuery());
     }
 

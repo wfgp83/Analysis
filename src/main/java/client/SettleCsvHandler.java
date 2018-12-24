@@ -22,19 +22,10 @@ public class SettleCsvHandler {
         return false;
     }
 
-    public List<ExcelData>  parseFile(final String dir1, final String dir2, final String prefix,
+    public List<ExcelData>  parseFile(final String dir, final String prefix,
                                              int idx) {
-
-        int prefixIdx = Constants.PREFIX_IDX;
-        final String tmpFileName =  Utils.getExportDataFileName(dir1, prefix, prefixIdx);
-        File tmpFile = new File(tmpFileName);
-        String dir = dir2;
-        if (tmpFile.exists()){
-            dir = dir1;
-        }
-
         List<ExcelData> rets = new ArrayList<>();
-        for(; prefixIdx <= idx; prefixIdx++) {
+        for( int prefixIdx = Constants.PREFIX_IDX; prefixIdx < idx; prefixIdx++) {
             final String fileName =  Utils.getExportDataFileName(dir, prefix, prefixIdx);
             logger.info("parse " + fileName);
             File file = new File(fileName);
@@ -91,8 +82,7 @@ public class SettleCsvHandler {
 
     public static void main(String[] args){
         SettleCsvHandler handler = new SettleCsvHandler();
-        List<ExcelData> datas = handler.parseFile(Constants.appDir + Constants.mainRaw,
-                Constants.appDir + Constants.subRaw,"", 1);
+        List<ExcelData> datas = handler.parseFile(Constants.appDir + Constants.q9Raw, "", 1);
         System.out.println(datas.size());
 
         int a = 0;

@@ -12,6 +12,7 @@ public class Constants {
     public static String appDir = "d:\\wfgp_util\\finance\\";
     public static String mainRaw = "main_rawData";
     public static String subRaw = "sub_rawData";
+    public static String q9Raw = "Q_rawData";
 
     public static String emilRaw = "emil_rawData";
 
@@ -31,9 +32,10 @@ public class Constants {
 
 
     public static void halt(String appDir, String subDir){
-        logger.info("Confirm export 小件 data to " + appDir +
-                "\\sub_rawData directory,大件 data to " + appDir +
-                "\\main_rawData directory.\nThen press any keyboard key to start ...");
+        logger.info("Confirm put Emil data to " + appDir +
+                "\\" + emilRaw + "  directory, and export one file from Q9 to " + appDir +
+                "\\" + q9Raw + "directory." +
+                "\nThen press any keyboard key to start ...");
 
         Scanner scan=new Scanner(System.in);
         scan.nextLine();

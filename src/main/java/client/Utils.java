@@ -2,7 +2,9 @@ package client;
 
 import org.apache.commons.csv.CSVRecord;
 import org.apache.poi.ss.usermodel.Cell;
+import org.apache.poi.ss.usermodel.CellType;
 import org.apache.poi.ss.usermodel.DateUtil;
+import org.apache.poi.ss.usermodel.Row;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -159,6 +161,31 @@ public class Utils {
         } catch (ArrayIndexOutOfBoundsException e){
             logger.error("no csv record at cell " + idx);
         }
+        return data;
+    }
+
+    public static String getCellData(Row csvRecord, int idx){
+        String data = "";
+        try {
+            Cell cellVal = csvRecord.getCell(idx);
+            switch (cellVal.getCellTypeEnum()){
+                case STRING:
+                    data = cellVal.getStringCellValue();
+                    break;
+                case NUMERIC:
+                    data = cellVal.getNumericCellValue()+ "";
+                    break;
+                case BOOLEAN:
+                    data = cellVal.getBooleanCellValue() + "";
+                    break;
+                default:
+                    logger.error("unknown data at cell " + idx);
+
+            }
+        } catch (Exception e){
+            logger.error("no data record at cell " + idx + ", " + e.getMessage());
+        }
+        System.out.println(data);
         return data;
     }
 
