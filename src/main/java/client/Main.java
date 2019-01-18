@@ -140,8 +140,6 @@ public class Main {
         needDoAgain.xDatas.getValue().getKey().addAll(needFindOnceAgain);
         exportData.exportAndHandle(needDoAgain, appConfDir, "t");
 
-        allEmilDatas.addAll(needDoAgain.datas.getValue().getKey());
-        allEmilDatas.addAll(needDoAgain.xDatas.getValue().getKey());
         allExcelDatas.addAll(needDoAgain.datas.getValue().getValue());
         allExcelDatas.addAll(needDoAgain.xDatas.getValue().getValue());
 
